@@ -4,15 +4,20 @@ android {
     compileSdk 34
     defaultConfig {
         applicationId "com.example.pluginhost"
-        minSdkVersion 15
-        targetSdkVersion 25
-        versionCode 10101
-        versionName 'V1.1.1'
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 10102
+        versionName 'V1.1.2-API34'
 
         lintOptions {
             // Override lint error on targetSdkVersion
             abortOnError false
         }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     applicationVariants.configureEach { variant ->

@@ -4,11 +4,16 @@ android {
     compileSdk 34
     defaultConfig {
         applicationId 'com.fr3ts0n.androbd.plugin.gpsprovider'
-        minSdkVersion 15
-        targetSdkVersion 25
+        minSdkVersion 21
+        targetSdkVersion 34
         vectorDrawables.useSupportLibrary = true
-        versionCode 10101
-        versionName 'V1.1.1'
+        versionCode 10102
+        versionName 'V1.1.2-API34'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     applicationVariants.configureEach { variant ->
