@@ -13,6 +13,8 @@
     <string name="plugin_settings">Plugin settings</string>
     <string name="update_period">Update period</string>
     <string name="update_period_sum">Time [seconds] between MQTT updates</string>
+    <string name="heartbeat_period">Heartbeat period</string>
+    <string name="heartbeat_period_sum">If no data was published for this many seconds, force a full snapshot to signal the device is still alive (0 = disabled)</string>
     <string name="mqtt_prefix">MQTT prefix</string>
     <string name="mqtt_prefix_sum">Prefix of all published MQTT topics</string>
     <string name="mqtt_retain">MQTT retain</string>

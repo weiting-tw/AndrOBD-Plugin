@@ -43,6 +43,7 @@ public class MqttPlugin
 	 */
 	static final String MQTT_PREFIX = "mqtt_prefix";
 	static final String UPDATE_PERIOD = "update_period";
+	static final String HEARTBEAT_PERIOD = "heartbeat_period";
 	static final String MQTT_PROTOCOL = "mqtt_protocol";
 	static final String MQTT_HOSTNAME = "mqtt_hostname";
 	static final String MQTT_PORT = "mqtt_port";
@@ -115,7 +116,16 @@ public class MqttPlugin
 	 * Period between publishing updates
 	 */
 	int update_period = 30;
-	
+	/**
+	 * Heartbeat period in seconds. 即使值沒變、超過這個秒數也會強制 publish 一次完整快照、
+	 * 讓 MQTT subscriber 知道車還活著。0 = 關閉（純 on-change）。
+	 */
+	int heartbeat_period = 300;
+	/**
+	 * Epoch millis 上一次「強制送完整 snapshot」的時間
+	 */
+	long lastFullPublishMs = 0L;
+
 	/**
 	 * Get preference int value
 	 *
@@ -214,6 +224,9 @@ public class MqttPlugin
 		
 		if (key == null || UPDATE_PERIOD.equals(key))
 		{ update_period = getPrefsInt(sharedPreferences, UPDATE_PERIOD, 30); }
+
+		if (key == null || HEARTBEAT_PERIOD.equals(key))
+		{ heartbeat_period = getPrefsInt(sharedPreferences, HEARTBEAT_PERIOD, 300); }
 		
 		if (key == null || MQTT_PROTOCOL.equals(key))
 		{ brokerProtocol = sharedPreferences.getString(MQTT_PROTOCOL, getString(R.string.mqtt_prot_tcp)); }
@@ -273,7 +286,13 @@ public class MqttPlugin
 		// Nothing to be sent - finished!
 		if (valueMap.isEmpty()) { return; }
 
-		// 先在鎖內計算這輪要 publish 的「有變動」項目、不要在鎖內呼叫網路
+		// Heartbeat：太久沒 publish 任何資料 → 強制送一次完整快照，
+		// 讓 MQTT subscriber 知道車還活著（heartbeat_period = 0 表示停用）
+		final long now = System.currentTimeMillis();
+		final boolean heartbeatDue = heartbeat_period > 0
+			&& (now - lastFullPublishMs) >= (heartbeat_period * 1000L);
+
+		// 先在鎖內計算這輪要 publish 的項目、不要在鎖內呼叫網路
 		HashMap<String, String> toPublish = new HashMap<>();
 		synchronized (valueMap)
 		{
@@ -281,11 +300,18 @@ public class MqttPlugin
 			{
 				String key = entry.getKey();
 				String value = entry.getValue();
-				String prev = lastPublishedMap.get(key);
-				// 第一次見到（prev == null）或值改變才 publish
-				if (prev == null || !prev.equals(value))
+				if (heartbeatDue)
 				{
+					// 超過 heartbeat 窗口 → 整批重送、不看是否變動
 					toPublish.put(key, value);
+				}
+				else
+				{
+					String prev = lastPublishedMap.get(key);
+					if (prev == null || !prev.equals(value))
+					{
+						toPublish.put(key, value);
+					}
 				}
 			}
 		}
@@ -324,6 +350,9 @@ public class MqttPlugin
 					lastPublishedMap.put(entry.getKey(), value);
 				}
 			}
+			// 不論這輪是 diff 還是 heartbeat snapshot、都重設 heartbeat 計時器
+			// → subscriber 在 heartbeat_period 內看到流量才當「車還活」
+			lastFullPublishMs = System.currentTimeMillis();
 
 			// disconnect client
 			client.disconnect();
